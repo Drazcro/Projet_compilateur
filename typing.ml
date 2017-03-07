@@ -82,28 +82,18 @@ let getTypeBinOp = function
 |(BCompar _) -> BoolT
 |(BLogic _) -> BoolT;;
 
-(* Récupère le type de l'appel de fonction dans l'environnement*)
-let getTypeCallE = function (CallE (cEType, name, cVarList), Fundecl(eType , fName, fVarList), env) -> let exprList = evalExprList(cVarList, env) in if (compareVarList(exprList, fVarList, env)) then eType else raise BadCallType;;
-
 (* Récupère la déclaration de fonction dans l'environnement*)
 let rec getFundecl = function
 (_, []) -> raise FunNotDefined
 |(name, Fundecl(eType , fName, varList)::r) -> if(name = fName) then Fundecl(eType , fName, varList) else getFundecl(name, r);;
-
+						
+ 
 (* vérifie si les variables de la déclaration de fonction et celles de l'appel de la fonctions sont compatibles*)
 let rec compareVarList = function
 ([], [], _) -> true
 | ([], _, _) -> false
 | (_, [], _) -> false
-| (ct::cr, Vardecl(eVType , _)::fr, env) -> let eCType = getType(ct, env) in if(eCType = eVType) then compareVarList(cr, fr, env) else false;;
-							
-(* Récupère le type d'expression *)							
-let rec getType = function
-(Const (_, constVal), env) -> getTypeCons (constVal)
-| (VarE (_, Var(vType, vName)), env) -> getTypeVar env (Var(vType,vName))
-| (BinOp (_, binop, exp1, exp2), env) -> let t1 = getType (exp1,env) and t2 = getType (exp2,env) and t3 = getTypeBinOp(binop) in if(compareBOExp (t1, t2, t3)) then t3 else raise BadType
-| (IfThenElse (_, exp1, exp2, exp3), env) -> let t1 = getType (exp1, env) and t2 = getType (exp2, env) and t3 = getType (exp3, env) in if(compareITEExp (t1, t2, t3)) then t1 else raise BadType
-| (CallE (cEType, name, varList), env) -> let fundecl = getFundecl(name, env.funbind) in getTypeCallE(CallE (cEType, name, varList), fundecl, env);;
+| (ct::cr, Vardecl(eVType , _)::fr, env) ->if(ct = eVType) then compareVarList(cr, fr, env) else false;;
  
 (* Vérifie que deux expressions sont bien du même type et qu'elles sont compatibles avec l'opération binaire*)
 let compareBOExp = function 
@@ -112,16 +102,27 @@ let compareBOExp = function
 
 (* Vérifie que deux expressions sont bien du même type et qu'elles sont compatibles avec le if then else*)
 let compareITEExp = function (t1, t2, t3) -> t1 = t2 & t1 = t3;;
-		
+
 (* Effectue l'avaluation des expressions contenues dans une liste*)
-let rec evalExprList = function
+(*let rec evalExprList = function
 ([], _) -> []
-| (t::r, env) -> tp_expr(t, env)::evalExprList(r, env);;
+| (t::r, env) -> tp_expr(t, env)::evalExprList(r, env);;*)
+
+(* Récupère le type de l'appel de fonction dans l'environnement*)
+let getTypeCallE = function (cVarList, Fundecl(eType , fName, fVarList), env) -> if (compareVarList(cVarList, fVarList, env)) then eType else raise BadCallType;;
+	
+(* Récupère le type d'expression *)							
+let rec getType = function env -> function
+(Const (_, constVal)) -> getTypeCons (constVal)
+| (VarE (_, Var(vType, vName))) -> getTypeVar env (Var(vType,vName))
+| (BinOp (_, binop, exp1, exp2)) -> let t1 = getType env exp1 and t2 = getType env exp2 and t3 = getTypeBinOp(binop) in if(compareBOExp (t1, t2, t3)) then t3 else raise BadType
+| (IfThenElse (_, exp1, exp2, exp3)) -> let t1 = getType env exp1 and t2 = getType env exp2 and t3 = getType env exp3 in if(compareITEExp (t1, t2, t3)) then t1 else raise BadType
+| (CallE (cEType, name, varList)) -> let fundecl = getFundecl(name, env.funbind) and typeList = List.map (getType env) varList in getTypeCallE(typeList, fundecl, env);;	
 	
 (* Evalue l'expression *)						
-let rec tp_expr = function 
-(Const(_, constVal), env) -> let  expType = getTypeCons (constVal) in Const (expType, constVal)
-| (VarE(_, var), env) -> let expType = getTypeVar env var in VarE(expType, var)
-| (BinOp (eType, binop, exp1, exp2), env) -> let expType = getType (BinOp (eType, binop, exp1, exp2), env) in BinOp (expType, binop, tp_expr(exp1, env), tp_expr(exp2, env))
-| (IfThenElse (eType, exp1, exp2, exp3), env) -> let expType = getType (IfThenElse (eType, exp1, exp2, exp3), env) in IfThenElse (expType, tp_expr(exp1, env), tp_expr(exp2, env), tp_expr(exp3, env))
-| (CallE (cEType, name, varList), env) -> let expType = getType(CallE (cEType, name, varList), env) and exprList = evalExprList(varList, env) in CallE (expType, name, exprList);;
+let rec tp_expr = function env -> function
+(Const(_, constVal)) -> let  expType = getTypeCons (constVal) in Const (expType, constVal)
+| (VarE(_, var)) -> let expType = getTypeVar env var in VarE(expType, var)
+| (BinOp (eType, binop, exp1, exp2)) -> let expType = getType env (BinOp (eType, binop, exp1, exp2)) in BinOp (expType, binop, tp_expr env exp1, tp_expr env exp2)
+| (IfThenElse (eType, exp1, exp2, exp3)) -> let expType = getType env (IfThenElse (eType, exp1, exp2, exp3)) in IfThenElse (expType, tp_expr env exp1, tp_expr env exp2, tp_expr env exp3)
+| (CallE (cEType, name, varList)) -> let expType = getType env (CallE (cEType, name, varList)) and exprList = List.map (tp_expr env) varList in CallE (expType, name, exprList);;
