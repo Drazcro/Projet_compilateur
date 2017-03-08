@@ -1,7 +1,7 @@
 (* Typechecking of source programs *)
 
-#use "lang.ml"
-#use "analyses.ml"
+open Lang
+open Analyses
 
 (* Environments *)
 
