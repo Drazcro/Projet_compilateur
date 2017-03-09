@@ -4,7 +4,7 @@
  - definite assignment
 *)
 
-open Lang;;
+open Lang
 
 (* ************************************************************ *)
 (* ****  Statement returns                                 **** *)

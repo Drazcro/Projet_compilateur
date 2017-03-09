@@ -3,7 +3,7 @@
    http://java.sun.com/docs/books/vmspec/2nd-edition/html/VMSpecTOC.doc.html
  *)
 
-open Lang;;
+open Lang
 
 type label = int list
 

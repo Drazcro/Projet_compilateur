@@ -1,7 +1,7 @@
 (* Typechecking of source programs *)
 
-open Lang;;
-open Analyses;;
+open Lang
+open Analyses
 
 (* Environments *)
 
