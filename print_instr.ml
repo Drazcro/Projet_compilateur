@@ -1,7 +1,7 @@
 (* printing Bytecode instructions to Jasmin assembler *)
 
-#use "lang.ml"
-#use "instr.ml"
+open Lang
+open Instrs
 
 let current_classname = "MyClass"
 let small_indentation = "  "

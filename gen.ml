@@ -1,8 +1,8 @@
 (* Compilation functions *)
 
-#use "lang.ml"
-#use "analyses.ml"
-#use "instrs.ml"
+open Lang;;
+open Analyses;;
+open Instrs;;
 
 (* ************************************************************ *)
 (* **** Compilation of expressions / statements            **** *)
@@ -12,20 +12,24 @@ exception NotSuported;;
 	
 let rec positionAux = function 
 (_, _, []) -> raise NotFound
-|(elm, cpt, (t::r)) -> if (elm = t) then cpt else positionAux(elm, cpt+1, r);;
+|(elm, cpt, (t::r)) -> if (elm = t) 
+		       then cpt 
+		       else positionAux(elm, cpt+1, r);;
 
 	
 let position = fun elm list -> positionAux(elm, 0, list);;
 
 let rec gen_exp = fun vList exp -> match exp with
 (Const(IntT, IntV(v))) -> [Loadc(IntT, IntV(v))]
-| (Const(BoolT, BoolV(v))) -> if(v = true) then [loadc(BoolT, IntV (1))] else [loadc(BoolT, IntV(0))]
-| (VarE(_, Var(vType, vName))) -> [loadv(IntT, (position vName vList))]
-|(BinOp(_, Bcompar(_),exp1,exp2)) -> raise NotSuported;;
-|(BinOp(_, op,exp1,exp2)) -> let l1 = (gen_exp vList exp1) and l2 = (gen_exp vList exp2) in l1@l2@[Bininst(IntT,op)]
+|(Const(BoolT, BoolV(v))) -> if(v = true) 
+			     then [Loadc(BoolT, IntV (1))] 
+			     else [Loadc(BoolT, IntV(0))]
+|(VarE(_, Var(vType, vName))) -> [Loadv(IntT, (position vName vList))]
+|(BinOp(_, BCompar(_),exp1,exp2)) -> raise NotSuported
+|(BinOp(_, op,exp1,exp2)) -> let l1 = (gen_exp vList exp1) 
+			     and l2 = (gen_exp vList exp2) in 
+					                   l1@l2@[Bininst(IntT,op)]
 | _ -> raise NotSuported;;
-
-
 
 (* ************************************************************ *)
 (* **** Compilation of methods / programs                  **** *)

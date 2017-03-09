@@ -4,7 +4,7 @@
  - definite assignment
 *)
 
-#use "lang.ml"
+open Lang;;
 
 (* ************************************************************ *)
 (* ****  Statement returns                                 **** *)

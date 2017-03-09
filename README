@@ -1,1 +1,22 @@
-Doit contenir une description succincte de votre travail.
+PARTIE TYPAGE D'UNE EXPRESSION
+
+--Exercice 1--
+
+Cet exercice ne m'a pas posé de problèmes particuliers.
+
+--Exercice 2--
+
+Pour l'ajout de la gestion des appels de fonctions, j'ai cependant rencontré quelques problèmes. Je ne savais pas vraiment comment m'y prendre pour évaluer la liste des variables de l'appel de fonction. J'ai enfin réussi avec l'utilisation de List.map.
+
+--Exercice 3--
+
+Aucune difficulté.
+
+J'ai choisi de multiplier le nombre de fonction que j'utilise plutôt que de tout concentrer en 3 fonctions. Cependant avec cela j'ai totalement oublié d'utiliser les fonctions d'aide fournies par Lang. Pour gérer les cas d'erreur j'ai créé differentes exceptions.
+
+PARTIE GENERATION DE CODE PSEUDO BYTECODE
+
+--Excercice 4--
+
+
+
