@@ -21,7 +21,6 @@ let position = fun elm list -> positionAux(elm, 0, list);;
 
 let rec gen_exp = fun vList exp -> match exp with
 (Const(IntT, IntV(v))) -> [Loadc(IntT, IntV(v))]
-<<<<<<< HEAD
 |(Const(BoolT, BoolV(v))) -> if(v = true) 
 			     then [Loadc(BoolT, IntV (1))] 
 			     else [Loadc(BoolT, IntV(0))]
