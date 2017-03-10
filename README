@@ -18,7 +18,7 @@ PARTIE GENERATION DE CODE BYTECODE
 
 --Exercice 4--
 
-Pour cet exercice, le plus dur a été de bien comprendre ce qui était demandé. Cependant j'ai un doute sur ce que devait renvoyer la fonction : J'ai choisi de renvoyer seulement le tableau d'instructions de pseudo-bytecode après avoir essayé de renvoyer directement les instructions en bytecode lisible par Jasmin avec la fonction pr_instr. Pour utiliser cette fonction il fallait cependant modifier légérement le MAKEFILE pour charger le fichier print_instr avant gen qui utilise la fonction pr_instr. Cette modification n'a pas été gardée et le MAKEFILE a retrouvé son état initial.
+Pour cet exercice, le plus dur a été de bien comprendre ce qui était demandé.Pour renvoyer du bytecode lisible par Jasmin avec la fonction pr_instr, il fallait cependant modifier légérement le MAKEFILE pour charger le fichier print_instr avant gen qui utilise la fonction pr_instr. De même, pourl le use, il fallait faire la même opération c'est à dire placer print_instr avant gen dans le chargement des fichiers.
 
 LES TESTS
 
@@ -72,7 +72,7 @@ BinOp (0, BArith BAadd , VarE (0, Var (Local , "k")), Const(0, IntV 3));;
  puis on génère son bytecode avec la fonction gen_exp :
 On considère que le tableau de variables donné vaut ["k"] :
 
-[Loadv (IntT, 0); Loadc (IntT, IntV 3); Bininst (IntT, BArith BAadd)]
+["iload 0"; "sipush 3"; "iadd"]
 
 Si on cherche à evaluer une expression contenant des branchements comme exp1 :
 On obtient bien l'exception Exception: Gen.NotSuported.

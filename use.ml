@@ -4,8 +4,8 @@
 #load "analyses.cmo";;
 #load "typing.cmo";;
 #load "instrs.cmo";;
-#load "gen.cmo";;
 #load "print_instr.cmo";;
+#load "gen.cmo";;
 #load "interf.cmo";;
 
 (* For using the parser:

@@ -3,7 +3,7 @@ all: comp
 # Compilation of Ocaml files
 # Attention: order of object files important 
 comp: lang.cmo parser.cmo lexer.cmo analyses.cmo typing.cmo\
-      instrs.cmo gen.cmo print_instr.cmo interf.cmo comp.cmo
+      instrs.cmo print_instr.cmo gen.cmo interf.cmo comp.cmo
 	ocamlc -o comp $^
 
 # Compilation of .ml files
