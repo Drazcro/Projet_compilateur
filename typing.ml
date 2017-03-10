@@ -40,9 +40,12 @@ BinOp (0, BArith BAadd , VarE (0, Var (Local , "k")),
 CallE (0, "f", [Const (0, IntV 3); Const (0, BoolV true )])));;
 
 let exp12 =
-BinOp (0, BArith BAadd , VarE (0, Var (Local , "k")), Const(0, IntV 3));; 
+BinOp (0, BArith BAadd , VarE (0, Var (Local , "k")), Const(0, IntV 3));;
 
-let env1 = {localvar = [("k", IntT ); ("n", IntT )]; globalvar = [];
+let exp13 =
+BinOp (0, BArith BAsub , VarE (0, Var (Local , "x")), BinOp (0, BArith BAadd , VarE (0, Var (Local , "y")), Const(0, IntV 2)));;  
+
+let env1 = {localvar = [("x", IntT ); ("y", IntT )]; globalvar = [];
 returntp = VoidT; funbind = [Fundecl(IntT , "f", [Vardecl(IntT , "n"); Vardecl(BoolT , "b")])]};;
 
 (* Exception pour les variables n'existant pas *)
