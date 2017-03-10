@@ -14,9 +14,72 @@ Aucune difficulté.
 
 J'ai choisi de multiplier le nombre de fonction que j'utilise plutôt que de tout concentrer en 3 fonctions. Cependant avec cela j'ai totalement oublié d'utiliser les fonctions d'aide fournies par Lang. Pour gérer les cas d'erreur j'ai créé differentes exceptions.
 
-PARTIE GENERATION DE CODE PSEUDO BYTECODE
+PARTIE GENERATION DE CODE BYTECODE
 
---Excercice 4--
+--Exercice 4--
 
+Pour cet exercice, le plus dur a été de bien comprendre ce qui était demandé. Cependant j'ai un doute sur ce que devait renvoyer la fonction : J'ai choisi de renvoyer seulement le tableau d'instructions de pseudo-bytecode après avoir essayé de renvoyer directement les instructions en bytecode lisible par Jasmin avec la fonction pr_instr. Pour utiliser cette fonction il fallait cependant modifier légérement le MAKEFILE pour charger le fichier print_instr avant gen qui utilise la fonction pr_instr. Cette modification n'a pas été gardée et le MAKEFILE a retrouvé son état initial.
+
+LES TESTS
+
+Pour realiser les tests j'ai tout d'abbord vérifié avec les exemples donnés durant le projet.
+
+Soit env1 l'environnement utilisé pour les tests et exp les expressions testées :
+
+let env1 = {localvar = [("k", IntT ); ("n", IntT )]; globalvar = [];
+returntp = VoidT; funbind = [Fundecl(IntT , "f", [Vardecl(IntT , "n"); Vardecl(BoolT , "b")])]};;
+
+let exp1 = BinOp (0, BCompar BCeq , VarE (0, Var (Local , "n")),
+BinOp (0, BArith BAadd , VarE (0, Var (Local , "k")),
+Const (0, IntV 1)));;
+
+Avec cette première expression le typage de tp_expr est réalisé avec succès. On obtient donc 
+BinOp (BoolT, BCompar BCeq, VarE (IntT, Var (Local, "n")),
+ BinOp (IntT, BArith BAadd, VarE (IntT, Var (Local, "k")),
+  Const (IntT, IntV 1)))
+
+Je teste ensuite pour un cas plus pour vérifier les erreurs de typage :
+
+let exp5 = BinOp (0, BCompar BCeq , VarE (0, Var (Local , "n")),
+BinOp (0, BArith BAadd , Const (0, BoolV true),
+Const (0, IntV 1)));;
+
+On obtient bien sûr Exception: Typing.BadType.
+Cette dernière est levée car additionner une constante avec un booleen est impossible.
+
+Pour l'ajout de la gestion des appels de fonctions j'ai choisi d'utiliser tout d'abbord un cas simple :
+
+let exp7 = CallE (0, "f", [Const (0, IntV 3); Const (0, BoolV true )]);;
+
+Cette dernière ayant bien étée déclarée préalablement dans l'environnement on obtient bien le typage IntT.
+
+Si on tente avec une fonction non déclarée :
+let exp8 = CallE (0, "l", [Const (0, IntV 3); Const (0, BoolV true )]);;
+On obtient Exception: Typing.FunNotDefined. En effet cette dernière n'a pu être trouvé dans l'environnement.
+
+Enfin un cas un autre cas pour tester le typage : 
+let exp10 = BinOp (0, BArith BAadd , VarE (0, Var (Local , "k")),
+CallE (0, "f", [Const (0, IntV 3); Const (0, BoolV true )]));;
+
+On obtient bien 
+BinOp (IntT, BArith BAadd, VarE (IntT, Var (Local, "k")),
+ CallE (IntT, "f", [Const (IntT, IntV 3); Const (BoolT, BoolV true)]))
+
+Enfin les tests pour la génération du bytecode :
+
+On type l'expression let exp12 =
+BinOp (0, BArith BAadd , VarE (0, Var (Local , "k")), Const(0, IntV 3));; 
+ puis on génère son bytecode avec la fonction gen_exp :
+On considère que le tableau de variables donné vaut ["k"] :
+
+[Loadv (IntT, 0); Loadc (IntT, IntV 3); Bininst (IntT, BArith BAadd)]
+
+Si on cherche à evaluer une expression contenant des branchements comme exp1 :
+On obtient bien l'exception Exception: Gen.NotSuported.
+
+Enfin si on essaye de générer le code avec le mauvais tableau de variable :
+SI ce dernier vaut ["p"] avec exp12 on obtient :
+ 
+Exception: Gen.NotFound.
 
 

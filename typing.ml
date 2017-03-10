@@ -140,8 +140,7 @@ let rec tp_expr = fun env exp -> match exp with
 						  VarE(eType, var)
 |(BinOp (t, binop, exp1, exp2)) -> let eType = getType env (BinOp (t, binop, exp1, exp2)) in 
 											  BinOp (eType, binop, tp_expr env exp1, tp_expr env exp2)
-|(IfThenElse (t, exp1, exp2, exp3)) -> let eType = getType env (IfThenElse (t, exp1, exp2, exp3)) in 
-												  IfThenElse (eType, tp_expr env exp1, tp_expr env exp2, tp_expr env exp3)
+|(IfThenElse (t, exp1, exp2, exp3)) -> let eType = getType env (IfThenElse (t, exp1, exp2, exp3)) in 											  IfThenElse (eType, tp_expr env exp1, tp_expr env exp2, tp_expr env exp3)
 |(CallE (t, name, vList)) -> let eType = getType env (CallE (t, name, vList)) 
 			     and eList = List.map (tp_expr env) vList in 
 								      CallE (eType, name, eList);;
