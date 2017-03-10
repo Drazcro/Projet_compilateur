@@ -11,43 +11,6 @@ type environment =
      returntp: tp;
      funbind: fundecl list};;
 
-let exp1 = BinOp (0, BCompar BCeq , VarE (0, Var (Local , "n")),
-BinOp (0, BArith BAadd , VarE (0, Var (Local , "k")),
-Const (0, IntV 1)));;
-
-let exp5 = BinOp (0, BCompar BCeq , VarE (0, Var (Local , "n")),
-BinOp (0, BArith BAadd , Const (0, BoolV true),
-Const (0, IntV 1)));;
-
-let exp6 = BinOp (0, BCompar BCeq , Const(0, BoolV true),
-BinOp (0, BArith BAadd , VarE (0, Var (Local , "k")),
-Const (0, IntV 1)));;
-
-let exp7 = CallE (0, "f", [Const (0, IntV 3); Const (0, BoolV true )]);;
-
-let exp8 = BinOp (0, BCompar BCeq , Const(0, BoolV true),
-BinOp (0, BArith BAadd , VarE (0, Var (Local , "k")),
-CallE (0, "f", [Const (0, IntV 3); Const (0, BoolV true )])));;
-
-let exp9 = BinOp (0, BCompar BCeq , Const(0, BoolV true),
-CallE (0, "f", [Const (0, IntV 3); Const (0, BoolV true )]));;
-
-let exp10 = BinOp (0, BArith BAadd , VarE (0, Var (Local , "k")),
-CallE (0, "f", [Const (0, IntV 3); Const (0, BoolV true )]));;
-
-let exp11 = BinOp (0, BCompar BCeq , VarE (0, Var (Local , "n")),
-BinOp (0, BArith BAadd , VarE (0, Var (Local , "k")),
-CallE (0, "f", [Const (0, IntV 3); Const (0, BoolV true )])));;
-
-let exp12 =
-BinOp (0, BArith BAadd , VarE (0, Var (Local , "k")), Const(0, IntV 3));;
-
-let exp13 =
-BinOp (0, BArith BAsub , VarE (0, Var (Local , "x")), BinOp (0, BArith BAadd , VarE (0, Var (Local , "y")), Const(0, IntV 2)));;  
-
-let env1 = {localvar = [("x", IntT ); ("y", IntT )]; globalvar = [];
-returntp = VoidT; funbind = [Fundecl(IntT , "f", [Vardecl(IntT , "n"); Vardecl(BoolT , "b")])]};;
-
 (* Exception pour les variables n'existant pas *)
 exception VarNotDefined;;
 
