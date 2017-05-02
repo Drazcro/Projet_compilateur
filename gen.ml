@@ -3,7 +3,6 @@
 open Lang
 open Analyses
 open Instrs
-open Print_instr
 
 (* ************************************************************ *)
 (* **** Compilation of expressions / statements            **** *)
@@ -13,7 +12,11 @@ open Print_instr
 exception NotFound;;
 (* Quand l'expression ne peut pour l'instant être traduite en bytecode *)
 exception NotSuported;;
-	
+
+let lastLabel = ref 0;;
+
+let convertInIntT = function tp -> if tp = BoolT then IntT else tp;;
+
 (* Fonction auxilliaire de position *)
 let rec positionAux = function 
 (_, _, []) -> raise NotFound
@@ -24,26 +27,79 @@ let rec positionAux = function
 (* Récupère la position d'un élément dans la liste *)
 let position = fun elm list -> positionAux(elm, 0, list);;
 
-(* Transforme une expression en un tableau de bytecode lisible par Jasmin *)
+let getLastLabel = function () -> incr lastLabel; [!lastLabel];;
+
 let rec gen_exp = fun vList exp -> match exp with
-(Const(IntT, IntV(v))) -> [pr_instr(Loadc(IntT, IntV(v)))]
-|(Const(BoolT, BoolV(v))) -> if(v = true) 
-			     then [pr_instr(Loadc(BoolT, IntV (1)))] 
-			     else [pr_instr(Loadc(BoolT, IntV(0)))]
-|(VarE(_, Var(vType, vName))) -> [pr_instr(Loadv(IntT, (position vName vList)))]
-|(BinOp(_, BCompar(_),exp1,exp2)) -> raise NotSuported
-|(BinOp(_, op,exp1,exp2)) -> let l1 = (gen_exp vList exp1) 
-			     and l2 = (gen_exp vList exp2) in 
-					                   l1@l2@[pr_instr(Bininst(IntT,op))]
+(Const(IntT, v)) -> [Loadc(IntT, v)]
+| (Const(BoolT, BoolV(v))) -> if v = true 
+			      	then [Loadc(IntT, IntV 1)] (* Le type BoolT n'est pas accépté dans le byte code sera remplacé par IntV 1 *)
+			      else [Loadc(IntT, IntV 0)] (* Le type BoolT n'est pas accépté dans le byte code sera remplacé par IntV 0 *)
+| (VarE(t, Var(vt,n))) -> if vt = Local then 
+	         	   let posV = position n vList 
+	 	 	   in [Loadv(IntT, posV)]
+			 else [Getstatic(IntT, n)]
+| (BinOp (_, BCompar(op), exp1, exp2)) -> let trueLabel = getLastLabel()
+					  and endLabel = getLastLabel() 
+					  in let ge1 = gen_exp vList exp1 
+					  in let ge2 = gen_exp vList exp2
+					  in ge1@ge2@If(BCeq, trueLabel)::Loadc(IntT, IntV 0)
+				             ::Goto endLabel::Label trueLabel::Loadc(IntT, IntV 1)::[Label(endLabel)]
+| (BinOp (_, op, exp1, exp2)) -> let ge1 = gen_exp vList exp1
+				 in let ge2 = gen_exp vList exp2
+				 in ge1@ge2@[Bininst(IntT, op)]
+| (IfThenElse(_, exp1, exp2, exp3)) -> let trueLabel = getLastLabel()
+				       and endLabel = getLastLabel() 
+				       in let ge1 = gen_exp vList exp1 
+		   	               in let ge2 = gen_exp vList exp2
+			               in let ge3 = gen_exp vList exp3
+				       in ge1@Loadc(IntT, IntV 1)::If(BCeq, trueLabel)
+					  ::ge3@Goto endLabel::Label trueLabel::ge2@[Label endLabel]
+| CallE(t, n, eList) ->  let geList = List.concat (List.map (gen_exp vList) eList)
+			 and newT = convertInIntT t
+	             	 and tList = List.map convertInIntT (List.map tp_of_expr eList) 
+	                 in geList@[Invoke(newT,n,tList)]
 | _ -> raise NotSuported;;
+
+let rec gen_stmt = fun vList stmt -> match stmt with
+(Skip) -> [Nop]
+| (Assign(t, Var(vt,n), exp)) -> let ge = gen_exp vList exp 
+				 in if vt = Local 
+			      	then let posV = position n vList 
+				in ge@[Storev(IntT, posV)]
+			      else ge@[Putstatic(IntT, n)]
+| (Seq(stmt1, stmt2)) -> gen_stmt vList stmt1@gen_stmt vList stmt2
+| (Cond(exp, stmt1, stmt2)) -> let trueLabel = getLastLabel()
+			       and endLabel = getLastLabel() 
+			       and ge = gen_exp vList exp
+			       and gstmt1 = gen_stmt vList stmt1
+			       and gstmt2 = gen_stmt vList stmt2
+			       in ge@Loadc(IntT, IntV 1)::If(BCeq, trueLabel)::gstmt2@Goto endLabel
+			          ::Label trueLabel::gstmt1@[Label endLabel]
+| (While(exp, stmt)) -> let whileLabel = getLastLabel()
+		        and endLabel = getLastLabel() 
+			and ge = gen_exp vList exp 
+		        and gstmt = gen_stmt vList stmt 
+		        in Label whileLabel::ge@Loadc(IntT, IntV 0)::If(BCeq, endLabel)::gstmt@Goto whileLabel::[Label endLabel]
+| (CallC(n, eList)) -> let geList = List.concat (List.map (gen_exp vList) eList)
+	             	 and tList = List.map convertInIntT (List.map tp_of_expr eList) 
+	                 in geList@[Invoke(VoidT,n,tList)]
+| (Return (Const(VoidT,_))) -> [ReturnI VoidT]
+| (Return (exp)) -> let ge = gen_exp vList exp in ge@[ReturnI (convertInIntT (tp_of_expr exp))];;
+
+
+let gen_fundefn = fun (Fundefn(Fundecl(t,n, pList), vList, body)) ->
+		let tList = List.map tp_of_vardecl pList in 
+		let mdecl = Methdecl(convertInIntT t, n, List.map convertInIntT tList) 
+		and meinfo = Methinfo(50000, 50000)
+		and gstmt = gen_stmt (List.map name_of_vardecl (pList@vList)) body
+		in Methdefn(mdecl,meinfo, gstmt);;
 
 (* ************************************************************ *)
 (* **** Compilation of methods / programs                  **** *)
 (* ************************************************************ *)
 
 let gen_prog (Prog (gvds, fdfs)) = 
-  JVMProg ([], 
-           [Methdefn (Methdecl (IntT, "even", [IntT]),
-                      Methinfo (3, 1),
-                      [Loadc (IntT, IntV 0); ReturnI IntT])]);;
-				
+  JVMProg(gvds,List.map gen_fundefn fdfs);;
+
+(*let stmt2 = match tppf with (Prog(_,[Fundefn(_,_,body)])) -> body;;*)
+			

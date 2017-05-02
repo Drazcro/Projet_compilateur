@@ -11,29 +11,27 @@ type environment =
      returntp: tp;
      funbind: fundecl list};;
 
+type kindErrors = 
+NotDefined of string (* Non défini *)
+| BadType of string (* Mauvais typage *)
+| BadNbArgs of string (* Mauvais nombre d'arguments *)
+| BadCall of string (* Mauvais appel de fonction *)
+| BadDef of string;; (* Mauvaise definition de fonction *)      		 
+
 (* Exception pour les variables n'existant pas *)
-exception VarNotDefined;;
-
-(* Exception pour les erreurs d'évaluation d'expressions *)
-exception BadType;;
-
-(* Exception pour les erreurs d'évaluation d'expressions *)
-exception BadCallType;;
-
-(* Exception pour les erreurs d'attribuation de variables pour les appels de fonctions *)
-exception FunNotDefined;;
+exception Error of kindErrors;;
 
 (* Récupère la variable dans le tableau *)
-let rec getTypeVarAux = function
-((vn, tp)::r, vn2) -> if (vn = vn2) 
-	              then tp 
-		      else getTypeVarAux(r, vn2)
-|([], _) -> raise VarNotDefined;;
+let rec getTypeVarAux = fun vList name -> match vList with
+((vn, tp)::r) -> if vn = name 
+                 then tp 
+	         else getTypeVarAux r name
+|([]) -> raise (Error(NotDefined("La variable "^name^" n'a pas été trouvée dans l'environnement.")));;
 
 (* Récupère le type d'une variable dans l'environnement à partir d'un environnement et du nom d'une variable *)
 let getTypeVar = fun env v -> match v with 
-(Var(Local, vn)) -> getTypeVarAux(env.localvar, vn)
-|(Var(Global, vn)) -> getTypeVarAux(env.globalvar, vn);;
+(Var(Local, vn)) -> getTypeVarAux env.localvar vn
+|(Var(Global, vn)) -> getTypeVarAux env.globalvar vn;;
 
 (* Récupère le type d'expression d'une constante *)
 let getTypeCons = function
@@ -47,36 +45,38 @@ let getTypeBinOp = function
 |(BCompar _) -> BoolT
 |(BLogic _) -> BoolT;;
 
+let getTypeFundecl = function Fundecl(t, _,_) -> t;;
+
 (* Récupère la déclaration de fonction dans l'environnement *)
-let rec getFundecl = function
-(_, []) -> raise FunNotDefined
-|(n, Fundecl(t , fn, vList)::r) -> if(n = fn) 
-			           then Fundecl(t , fn, vList) 
-			           else getFundecl(n, r);;
+let rec getFundecl = fun fList name -> match fList with 
+([]) -> raise (Error(NotDefined("La fonction "^name^" n'a pas été trouvée dans l'environnement.")))
+|(Fundecl(t , fn, vList)::r) -> if name = fn 
+			        then Fundecl(t , fn, vList) 
+			        else getFundecl r name;;
 						 
 (* vérifie si les variables de la déclaration de fonction et celles de l'appel de la fonctions sont compatibles *)
-let rec compareVarList = function
+let rec compareList = function
 ([], [], _) -> true
 |([], _, _) -> false
 |(_, [], _) -> false
-|(ct::cr, Vardecl(t , _)::fr, env) -> if(ct = t) 
-				      then compareVarList(cr, fr, env) 
-				      else false;;
+|(t1::r1, t2::r2, env) -> if t1 = t2 
+		          then compareList(r1, r2, env) 
+		          else false;;
  
 (* Vérifie que deux expressions sont bien du même type et qu'elles sont compatibles avec l'opération binaire *)
-let compareBOExp = function 
-(t1, t2, IntT) -> t1 = t2 && t1 = IntT
-|(t1, t2, BoolT) -> t1 = t2
-|(t1, t2, VoidT) -> true;;
+let compareBOExp = fun t1 t2 tBOExp -> match tBOExp with
+(IntT) -> t1 = t2 && t1 = IntT
+|(BoolT) -> t1 = t2
+|(VoidT) -> false;;
 
 (* Vérifie que les trois expressions utilisées dans la condition soient bien du même type *)
-let compareITEExp = function (t1, t2, t3) -> t1 = t2 && t1 = t3;;
+let compareITEExp = fun t1 t2 t3 -> t1 = t2 && t1 = t3;;
 
 (* Récupère le type de l'appel de fonction dans l'environnement*)
-let getTypeCallE = function (vList, Fundecl(eType , fName, fvList), env) -> 
-if (compareVarList(vList, fvList, env)) 
+let getTypeCallE = fun tList (Fundecl(eType , fName, fvList)) env -> let ftList = List.map tp_of_vardecl fvList in 
+if compareList(tList, ftList, env) 
 then eType 
-else raise BadCallType;;
+else raise (Error(BadCall("La fonction "^fName^" n'a pu être appelée. Les arguments sont invalides.")));;
 	
 (* Récupère le type de l'expression *)							
 let rec getType = fun env exp -> match exp with
@@ -85,18 +85,18 @@ let rec getType = fun env exp -> match exp with
 |(BinOp (_, binop, exp1, exp2)) -> let t1 = getType env exp1 
 				   and t2 = getType env exp2 
 				   and t3 = getTypeBinOp(binop) in 
-							        if(compareBOExp (t1, t2, t3)) 
+							        if (compareBOExp t1 t2 t3) 
 	                                                        then t3 
-							        else raise BadType
+							        else raise (Error(BadType("Les expressions de l'op binaire sont invalides.")))
 |(IfThenElse (_, exp1, exp2, exp3)) -> let t1 = getType env exp1 
 				       and t2 = getType env exp2 
 				       and t3 = getType env exp3 in 
-								 if(compareITEExp (t1, t2, t3)) 
+								 if(compareITEExp t1 t2 t3) 
 								 then t1 
-								 else raise BadType
-|(CallE (cEType, name, vList)) -> let fundecl = getFundecl(name, env.funbind) 
+								 else raise (Error(BadType("Les expressions du ifthenelse sont invalides.")))
+|(CallE (cEType, name, vList)) -> let fundecl = getFundecl env.funbind name 
 				  and tList = List.map (getType env) vList in 
-									   getTypeCallE(tList, fundecl, env)	
+									   getTypeCallE tList fundecl env	
 	
 (* Evalue l'expression *)						
 let rec tp_expr = fun env exp -> match exp with
@@ -111,8 +111,92 @@ let rec tp_expr = fun env exp -> match exp with
 			     and eList = List.map (tp_expr env) vList in 
 								      CallE (eType, name, eList);;
 
-(* TODO: put your definitions here *)
-let tp_prog (Prog (gvds, fdfs)) =
-  Prog([],
-       [Fundefn (Fundecl (BoolT, "even", [Vardecl (IntT, "n")]), [], Skip)])
-;;
+(* Evalue une instruction *)
+let rec tp_stmt = fun env stmt -> match stmt with
+(Skip) -> Skip
+| (Assign(t, var, expr)) -> let typeVar = getTypeVar env var in
+		            let evalExp = tp_expr env expr in
+			    if typeVar <> tp_of_expr evalExp then raise(Error(BadType("La variable et l'expression ont un type different !")))
+			    else Assign(VoidT, var, evalExp)
+| (Seq(stmt1, stmt2)) -> Seq(tp_stmt env stmt1, tp_stmt env stmt2)
+| (Cond(expr, stmt1, stmt2)) -> let evalExp = tp_expr env expr in
+			        let t = tp_of_expr evalExp in
+			        if t <> BoolT then raise(Error(BadType("La condition doit être booléenne !")))
+				else Cond(evalExp, tp_stmt env stmt1, tp_stmt env stmt2)
+| (While(expr, stmt)) -> let evalExp = tp_expr env expr in
+			 let t = tp_of_expr evalExp in
+		         if t <> BoolT then raise(Error(BadType("Le while doit être booléen !")))
+   			 else While(evalExp, tp_stmt env stmt)
+| (CallC(name, eList)) -> let f = getFundecl env.funbind name in
+	      	          if getTypeFundecl f <> env.returntp then raise(Error(BadType("La fonction ne renvoie pas le bon type !")))
+	  		  else let evaleList = List.map(tp_expr env) eList in
+		          let tList = List.map(getType env) evaleList and tFList = List.map (tp_of_vardecl) (params_of_fundecl f) in
+			  if(compareList(tList, tFList, env)) then CallC(name, evaleList)		
+                          else raise(Error(BadCall("L'appel de la fonction n'est pas valide avec sa déclaration")))
+| (Return (expr)) -> let evalExp = tp_expr env expr  in
+		     let t = tp_of_expr evalExp in
+	             if(t = env.returntp) then Return (evalExp)
+		     else raise(Error(BadType("Le return ne retourne pas le bon type !")));;	 
+
+let rec isVarValid = function
+([]) -> true
+|(t::r) -> if t = VoidT then false else isVarValid r;; 
+
+
+let rec isUniqueAux = fun name vList -> match vList with
+([]) -> []
+|(t::r) -> let n = name_of_vardecl t in if name = n then t::(isUniqueAux name r) else isUniqueAux name r;;
+
+let rec remove = fun name vList -> match vList with
+([]) -> []
+| (t::r) -> if name_of_vardecl t = name then remove name r else t::(remove name r);;  
+
+let rec isUnique = function
+([]) -> true
+|(t::r) -> let nb = List.length (isUniqueAux (name_of_vardecl t) (t::r)) in if nb = 1 then  isUnique (remove (name_of_vardecl t) (t::r)) else false;;
+
+let rec addLocalVarAux = function
+([]) -> []
+|(Vardecl(t,n)::r) -> (n,t)::addLocalVarAux(r);;
+
+let addLocaVar = fun env vList -> let localvar = addLocalVarAux vList in let nlocalvar = localvar in  {localvar = nlocalvar; globalvar = env.globalvar; returntp = env.returntp; funbind = env.funbind};;
+
+let addreturntp = fun env fundecl -> {localvar = env.localvar; globalvar = env.globalvar; returntp = (getTypeFundecl fundecl); funbind = env.funbind};;
+
+let addGlobalVar = fun env vList -> let globalVar = addLocalVarAux vList in  {localvar = env.localvar; globalvar = globalVar; returntp = env.returntp; funbind = env.funbind};;
+
+let rec addFundeclAux = function
+([]) -> []
+| (Fundefn(fundecl, _, _)::r) -> fundecl::addFundeclAux(r);;
+
+let addFunDecl = fun env fList -> let nfunbind = addFundeclAux (fList) in {localvar = env.localvar; globalvar = env.globalvar; returntp = env.returntp; funbind = nfunbind};;
+
+(* *) 
+let rec tp_fdefn = fun env (Fundefn(fundecl, vList, body)) -> let tList = List.map tp_of_vardecl vList @ List.map tp_of_vardecl (params_of_fundecl fundecl) in if (isVarValid tList) then let varList = vList@(params_of_fundecl fundecl) in
+if (isUnique varList) then let nEnv = addreturntp (addLocaVar env varList) fundecl in Fundefn(fundecl, vList, tp_stmt nEnv body)
+				else raise (Error(BadDef("une ou plusieurs variables utilisées pour la definition de la fonction ne sont pas uniques.")))
+	    else raise (Error(BadDef("une ou plusieurs variables utilisées pour la definition de la fonction sont invalides.")));;
+
+let tp_prog = fun (Prog(vList, fList)) -> let env = {localvar =[]; globalvar= []; returntp = VoidT; funbind = []} in Prog(vList, (List.map (tp_fdefn (addFunDecl (addGlobalVar env vList) fList)) fList));;
+
+(* Tests *)	
+
+let o1 = BinOp (0, BCompar BCeq , VarE (0, Var (Local , "n")),
+BinOp (0, BArith BAadd , VarE (0, Var (Local , "k")),
+Const (0, IntV 1)));;
+
+let o2 = BinOp (0, BCompar BCeq , VarE (0, Var (Local , "j")),
+BinOp (0, BArith BAadd , VarE (0, Var (Local , "k")),
+Const (0, IntV 1)));;
+
+let o3 = BinOp (0, BArith BAadd , VarE (0, Var (Local , "k")),
+Const (0, IntV 1));;
+
+let os = VarE (0, Var (Local , "k"));;
+
+let fundecl1 = Fundecl(VoidT, "test", [Vardecl(IntT, "k")]);;
+
+let stmt1 = CallC("test", [o3]);;
+
+let env = { localvar = [("k", IntT ); ("n", IntT ); ("j", BoolT)]; globalvar = [];
+returntp = VoidT ; funbind = [Fundecl(VoidT, "test", [Vardecl(IntT, "k")])]};;	

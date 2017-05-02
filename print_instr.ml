@@ -14,7 +14,7 @@ let pr_label pth = "lab" ^ (List.fold_right (fun p s ->  "_" ^ (string_of_int p)
 let pr_tp_prefix = function
     BoolT -> failwith "BoolT: not a valid type prefix"
   | IntT  -> "i"
-  | VoidT -> failwith "VoidT: not a valid type prefix"
+  | VoidT -> failwith "VoidT: not a valid type prefix !!!"
 
 let pr_type_descriptor = function
     BoolT -> failwith "BoolT: not a valid type descriptor"
