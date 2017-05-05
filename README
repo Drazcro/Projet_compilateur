@@ -132,6 +132,7 @@ Je ne pense pas que le compilateur ai de véritables points forts si ce n'est de
 POINTS FAIBLES DU COMPILATEUR
 
 Les exceptions ne sont pas encore assez précises pour clairement identifier le problème. 
+La gestion des piles n'est surement pas assez optimisée.
 
 TESTS
 
