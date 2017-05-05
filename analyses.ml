@@ -30,6 +30,7 @@ let rec stmt_returns = function
 (* ****  Stack depth                                       **** *)
 (* ************************************************************ *)
 
+(* Additionne les valeurs d'un tableau *)
 let rec addTableValue = function
 ([]) -> 0
 |(t::r) -> t+addTableValue r;;
@@ -71,6 +72,7 @@ let rec defassignTable = fun f eList -> match eList with
 	    then defassignTable f r
 	    else false;; 
 
+(* Regarde si les valeur d'un tableau sont bien toutes à true *)
 let rec isValid = function
 ([]) -> true
 |(t::r) -> if t = false 
@@ -82,7 +84,7 @@ let rec defassign_e = fun vs exp -> match exp with
 (Const(_, _)) -> true
 |(VarE(_,Var(_, n))) -> StringSet.mem n vs
 |(BinOp(_, _, exp1, exp2)) -> defassign_e vs exp1 && defassign_e vs exp2
-|(IfThenElse(_, exp1, exp2, exp3)) -> defassign_e vs exp1 && defassign_e vs exp2 && defassign_e vs exp3
+|(IfThenElse(_, exp1, exp2, exp3)) -> (defassign_e vs exp1) && (defassign_e vs exp2) && (defassign_e vs exp3)
 |(CallE(_, _, eList)) -> defassignTable (defassign_e vs) eList;;
 
 (* Verifie que l'instruction a bien une valeur finale et renvoie les variables ayant une valeur prédefinie *)
