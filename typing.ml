@@ -45,6 +45,7 @@ let getTypeBinOp = function
 |(BCompar _) -> BoolT
 |(BLogic _) -> BoolT;;
 
+(* Récupère le type d'une déclaration de fonction *)
 let getTypeFundecl = function Fundecl(t, _,_) -> t;;
 
 (* Récupère la déclaration de fonction dans l'environnement *)
@@ -73,12 +74,13 @@ let compareBOExp = fun t1 t2 tBOExp -> match tBOExp with
 let compareITEExp = fun t1 t2 t3 -> t1 = t2 && t1 = t3;;
 
 (* Récupère le type de l'appel de fonction dans l'environnement*)
-let getTypeCallE = fun tList (Fundecl(eType , fName, fvList)) env -> let ftList = List.map tp_of_vardecl fvList 
-								     in if compareList(tList, ftList, env) 
-									then eType 
-								        else raise (TypingError(BadCall("La fonction "^fName^" n'a pu être appelée. 
-											           Les arguments sont invalides.")));; 
-	
+let getTypeCallE = fun tList (Fundecl(eType , fName, fvList)) env -> 
+let ftList = List.map tp_of_vardecl fvList 
+in if compareList(tList, ftList, env) 
+   then eType 
+   else raise (TypingError(BadCall("La fonction "^fName^" n'a pu être appelée. 
+		                    Les arguments sont invalides.")));; 
+
 (* Récupère le type de l'expression *)							
 let rec getType = fun env exp -> match exp with
 (Const (_, v)) -> getTypeCons v
@@ -120,7 +122,7 @@ let rec tp_stmt = fun env stmt -> match stmt with
 			    in let evalExp = tp_expr env expr 
 			       in if typeVar <> tp_of_expr evalExp 
 				  then raise(TypingError(BadType("La variable et l'expression 
-							    ont un type different !")))
+							          ont un type different !")))
 			       else Assign(VoidT, var, evalExp)
 | (Seq(stmt1, stmt2)) -> Seq(tp_stmt env stmt1, tp_stmt env stmt2)
 | (Cond(expr, stmt1, stmt2)) -> let evalExp = tp_expr env expr 
@@ -141,7 +143,9 @@ let rec tp_stmt = fun env stmt -> match stmt with
 				     and tFList = List.map (tp_of_vardecl) (params_of_fundecl f) 
 				     in if(compareList(tList, tFList, env)) 
 					then CallC(name, evaleList)		
-                  			else raise(TypingError(BadCall("L'appel de la fonction n'est pas valide avec sa déclaration.")))
+                  			else raise(TypingError(BadCall("L'appel de la fonction 
+									n'est pas valide avec sa 
+									déclaration.")))
 | (Return (expr)) -> let evalExp = tp_expr env expr
 		     in let t = tp_of_expr evalExp 
 		     in if(t = env.returntp) 

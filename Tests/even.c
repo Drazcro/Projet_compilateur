@@ -30,10 +30,10 @@ int increment(int i) {
 
 int zero (int i) {
   while (i > 0) {
-    i = i - 1;
+    i = decrement(i);
   }
   while (i < 0) {
-    i = i + 1;
+    i = increment(i);
   }
   return i;
 }

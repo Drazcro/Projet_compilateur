@@ -8,11 +8,12 @@ open Instrs
 (* **** Compilation of expressions / statements            **** *)
 (* ************************************************************ *)
 
-(* Quand une variable n'a pas été trouvée *)
-exception NotFound;;
+type kindErrors =
+NotFound of string (* Quand une variable n'a pas été trouvée *)
+| GenErr of string;; (* Quand une erreur de génération arrive *)
 
-(* Quand l'expression ne peut pour l'instant être traduite en bytecode *)
-exception NotSuported;;
+(* Exception de la generation de bytecode *)
+exception GenError of kindErrors;;
 
 (* Pointeur explicite de caml servant à stocker la dernière étiquette utilisable *)
 let lastLabel = ref 0;;
@@ -27,7 +28,7 @@ let convertInIntT = function tp -> if tp = BoolT
 
 (* Fonction auxilliaire de position *)
 let rec positionAux = function 
-(_, _, []) -> raise NotFound
+(_, _, []) -> raise (GenError(NotFound("L'element n'a pas été trouvé !")))
 |(elm, cpt, (t::r)) -> if elm = t 
 		       then cpt 
 		       else positionAux(elm, cpt+1, r);;
@@ -50,7 +51,8 @@ let rec gen_exp = fun vList exp -> match exp with
 					  in let ge1 = gen_exp vList exp1 
 				  	     in let ge2 = gen_exp vList exp2
 					  	in ge1@ge2@If(op, trueLabel)::Loadc(IntT, IntV 0)
-				             	::Goto endLabel::Label trueLabel::Loadc(IntT, IntV 1)::[Label(endLabel)]
+				             	   ::Goto endLabel::Label trueLabel
+						   ::Loadc(IntT, IntV 1)::[Label(endLabel)]
 |(BinOp (_, op, exp1, exp2)) -> let ge1 = gen_exp vList exp1
 				 in let ge2 = gen_exp vList exp2
 			 	    in ge1@ge2@[Bininst(IntT, op)]
@@ -65,7 +67,7 @@ let rec gen_exp = fun vList exp -> match exp with
 			 and newT = convertInIntT t
 	             	 and tList = List.map convertInIntT (List.map tp_of_expr eList) 
 	                 in geList@[Invoke(newT,n,tList)]
-| _ -> raise NotSuported;;
+| _ -> raise (GenError(GenErr("La génération de pseudo bytecode a échoué !")));;
 
 (* Génère le pseudo bytecode pour un statement *)
 let rec gen_stmt = fun vList stmt -> match stmt with
@@ -87,7 +89,8 @@ let rec gen_stmt = fun vList stmt -> match stmt with
 		        and endLabel = getLastLabel() 
 			and ge = gen_exp vList exp 
 		        and gstmt = gen_stmt vList stmt 
-		        in Label whileLabel::ge@Loadc(IntT, IntV 0)::If(BCeq, endLabel)::gstmt@Goto whileLabel::[Label endLabel]
+		        in Label whileLabel::ge@Loadc(IntT, IntV 0)::If(BCeq, endLabel)
+			   ::gstmt@Goto whileLabel::[Label endLabel]
 | (CallC(n, eList)) -> let geList = List.concat (List.map (gen_exp vList) eList)
 	             	 and tList = List.map convertInIntT (List.map tp_of_expr eList) 
 	                 in geList@[Invoke(VoidT,n,tList)]
@@ -96,7 +99,7 @@ let rec gen_stmt = fun vList stmt -> match stmt with
 
 
 (* Génère le pseudo bytecode pour une definition de fonction *)
-let gen_fundefn = fun (Fundefn(Fundecl(t,n, pList), vList, body)) ->
+let gen_fundefn = fun (Fundefn(Fundecl(t, n, pList), vList, body)) ->
 let tList = List.map tp_of_vardecl pList 
 in let mdecl = Methdecl(convertInIntT t, n, List.map convertInIntT tList) 
    and meinfo = Methinfo(Analyses.stack_depth_c body, (List.length pList + List.length vList))
@@ -108,5 +111,4 @@ in let mdecl = Methdecl(convertInIntT t, n, List.map convertInIntT tList)
 (* ************************************************************ *)
 
 (* Génère le pseudo bytecode pour un programme *)
-let gen_prog (Prog (gvds, fdfs)) = 
-  JVMProg(gvds,List.map gen_fundefn fdfs);;
+let gen_prog (Prog (gvds, fdfs)) = JVMProg(gvds, List.map gen_fundefn fdfs);;

@@ -30,24 +30,28 @@ let rec stmt_returns = function
 (* ****  Stack depth                                       **** *)
 (* ************************************************************ *)
 
+let rec addTableValue = function
+([]) -> 0
+|(t::r) -> t+addTableValue r;;
+
 (* Calcule la taille de la pille nécessaire pour les expressions *)
 let rec stack_depth_e = function
 (Const(_, _)) -> 1
 |(VarE(_, _)) -> 1
-|(BinOp(_, _, exp1, exp2)) -> max (stack_depth_e exp1) ((stack_depth_e exp2)+1)
-|(IfThenElse(_, exp1, exp2, exp3)) -> List.fold_left max 2 [stack_depth_e exp1; stack_depth_e exp2; stack_depth_e exp3]
+|(BinOp(_, _, exp1, exp2)) -> (stack_depth_e exp1) + (stack_depth_e exp2)
+|(IfThenElse(_, exp1, exp2, exp3)) -> (stack_depth_e exp1) + (stack_depth_e exp2) + (stack_depth_e exp3)
 |(CallE(_, _, eList)) -> let sList = List.map stack_depth_e eList 
-		         in List.fold_left max 0 sList + List.length sList;;
+		         in (List.length sList) + (addTableValue sList);;
 
 (* Calcule la taille de la pille nécessaire pour les instructions *)
 let rec stack_depth_c = function
 (Skip) -> 0
 |(Assign(_,_,exp)) -> stack_depth_e exp
-|(Seq(stmt1,stmt2)) -> max (stack_depth_c stmt1) (stack_depth_c stmt2)
-|Cond(exp,stmt1,stmt2) -> List.fold_left max 2 [stack_depth_e exp; stack_depth_c stmt1; stack_depth_c stmt2]
-|(While(exp,stmt)) -> max 2 (max (stack_depth_e exp) (stack_depth_c stmt))
+|(Seq(stmt1,stmt2)) -> (stack_depth_c stmt1) + (stack_depth_c stmt2)
+|Cond(exp,stmt1,stmt2) -> (stack_depth_e exp) + (stack_depth_c stmt1) + (stack_depth_c stmt2)
+|(While(exp,stmt)) -> (stack_depth_e exp) + (stack_depth_c stmt)
 |(CallC(_,eList)) -> let sList = List.map stack_depth_e eList 
-		     in List.fold_left max 0 sList + (List.length sList)
+		     in (List.length sList) + (addTableValue sList)
 |(Return exp) -> stack_depth_e exp;;
 
 (* ************************************************************ *)
@@ -66,6 +70,12 @@ let rec defassignTable = fun f eList -> match eList with
 | (t::r) -> if f t = true 
 	    then defassignTable f r
 	    else false;; 
+
+let rec isValid = function
+([]) -> true
+|(t::r) -> if t = false 
+	   then false
+	   else isValid r;;
 
 (* Verifie que l'expression a bien une valeur finale *)
 let rec defassign_e = fun vs exp -> match exp with
@@ -99,7 +109,7 @@ let rec defassign_c = fun allvs stmt -> match stmt with
 				   AssignException("Erreur d'assignation : 
 						    l'expression est indefinie !")))
 |(CallC (_, eList)) -> let dList = List.map (defassign_e allvs) eList 
-			  in if List.exists not dList
+			  in if isValid dList
 			     then raise (AnalyseError(
 					 AssignException("Erreur d'assignation : 
 							  l'expression est indefinie !")))
@@ -108,4 +118,4 @@ let rec defassign_c = fun allvs stmt -> match stmt with
 	         then allvs
 	         else raise (AnalyseError(
 			      AssignException("Erreur d'assignation : 
-						          l'expression est indefinie !")));;
+				               l'expression est indefinie !")));;

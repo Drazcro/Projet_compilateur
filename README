@@ -106,7 +106,7 @@ Cette fonction ne m'a pas posé particulièrement de problèmes et à pu être r
 FIN PARTIE GENERATION BYTECODE
 
 --Exercice 9--
-La principale difficulté de cette partie a été e travail préalable à fournir en amont de la complétion de la fonction. En effet, il fallait tout d'abbord bien comprendre comment gérer les étiquettes et voir comment les implémenter dans la fonction. Ensuite, il fallait bien distinguer les différents cas à branchements pour adapter l'apparition des étiquettes dans la génération dupseudo bytecode. De plus, il fallait bien comprendre comment fonctionnaient les appels de fonctions. J'ai eu plusieurs problèmes pour intégrer les labels dans la fonction. J'ai tout d'abbord choisi d'implémenter la première méthode proposé dans le sujet du projet. Cependant je restait bloqué au niveau des appels de fonctions. J'ai à ce moment appris l'existence des pointeurs explicites de caml permettant de stocker la dernière valeur utilisable pour la génération de la prochaine étiquette. Une fois son fonctionnement compris j'ai donc pu réaliser une petite fonction permettant d'incrémenteur ce pointeur compteur et de renvoyer cette valeur son forme valide. Ceci fait, la génération de labels a étée rendue très facile.
+La principale difficulté de cette partie a été e travail préalable à fournir en amont de la complétion de la fonction. En effet, il fallait tout d'abbord bien comprendre comment gérer les étiquettes et voir comment les implémenter dans la fonction. Ensuite, il fallait bien distinguer les différents cas à branchements pour adapter l'apparition des étiquettes dans la génération du pseudo bytecode. De plus, il fallait bien comprendre comment fonctionnaient les appels de fonctions. J'ai eu plusieurs problèmes pour intégrer les labels dans la fonction. J'ai tout d'abbord choisi d'implémenter la première méthode proposé dans le sujet du projet. Cependant je restait bloqué au niveau des appels de fonctions. J'ai à ce moment appris l'existence des pointeurs explicites de caml permettant de stocker la dernière valeur utilisable pour la génération de la prochaine étiquette. Une fois son fonctionnement compris j'ai donc pu réaliser une petite fonction permettant d'incrémenteur ce pointeur compteur et de renvoyer cette valeur son forme valide. Ceci fait, la génération de labels a étée rendue très facile.
 
 --Exercice 10--
 Cette fonction n'a pas posé de problèmes particuliers. J'ai aussi utilisé le pointeur explicite pour les labels.
@@ -151,5 +151,5 @@ Resultat de la fonction increment de 2: 3
 Resultat de la fonction isNatural de 2: 
 il est bien naturel.
 
-
+Si par mégarde une fonction n'est pas bien typée on obtient bien une exception : Fatal error: exception Typing.TypingError ...
 
