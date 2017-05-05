@@ -6,62 +6,49 @@
 
 open Lang
 
+(* Liste des erreurs pour l'analyse *)
+type kindErrors = AssignException of string;;
+
+(* Exception pour les variables n'existant pas *)
+exception AnalyseError of kindErrors;;
+
 (* ************************************************************ *)
 (* ****  Statement returns                                 **** *)
 (* ************************************************************ *)
 
+(* Vérifie qu'un statement se termine bien *)
 let rec stmt_returns = function
-    Skip -> false
-  | Assign(_,_,_) -> false
-  | Seq(_,stmt) -> stmt_returns stmt
-  | Cond(_,stmt1,stmt2) -> stmt_returns stmt1 && stmt_returns stmt2
-  | While(_,stmt) -> stmt_returns stmt
-  | CallC(_,_) -> false
-  | Return _ -> true
-;;
-
-let fundef_returns (Fundefn(Fundecl(_,_,_),_,stmt)) = stmt_returns stmt;;
+(Skip) -> false
+|(Assign(_,_,_)) -> false
+|(Seq(_,stmt)) -> stmt_returns stmt
+|(Cond(_,stmt1, stmt2)) -> stmt_returns stmt1 && stmt_returns stmt2
+|(While(_,stmt)) -> stmt_returns stmt
+|(CallC(_,_)) -> false
+|(Return _) -> true;;
 
 (* ************************************************************ *)
 (* ****  Stack depth                                       **** *)
 (* ************************************************************ *)
 
+(* Calcule la taille de la pille nécessaire pour les expressions *)
 let rec stack_depth_e = function
-    Const(_,_) -> 1
-  | VarE(_,_) -> 1
-  | BinOp(_,_,e1,e2) ->
-     max (stack_depth_e e1) ((stack_depth_e e2)+1)
-  | IfThenElse(_,e1,e2,e3) ->
-     List.fold_left max 2 [stack_depth_e e1;stack_depth_e e2;stack_depth_e e3]
-       (* On va empiler 0 pour faire le test apres l'evaluation de e1, on a donc une
-          profondeur minimum de 2*)
-  | CallE(_,_,e_list) ->
-     (*ici lors de l'evaluation d'un parametre on a deja empile tous les parametres precedents
-       la profondeur depend donc de l'ordre d'evaluation des parametres. On peut simplifier
-       le probleme en considerant que la profondeur est le maximum des profondeurs des parametres
-       plus le nombre de parametres moins 1*)
-     let d_list = List.map stack_depth_e e_list in
-     List.fold_left max 0 d_list + List.length d_list
-;;
+(Const(_, _)) -> 1
+|(VarE(_, _)) -> 1
+|(BinOp(_, _, exp1, exp2)) -> max (stack_depth_e exp1) ((stack_depth_e exp2)+1)
+|(IfThenElse(_, exp1, exp2, exp3)) -> List.fold_left max 2 [stack_depth_e exp1; stack_depth_e exp2; stack_depth_e exp3]
+|(CallE(_, _, eList)) -> let sList = List.map stack_depth_e eList 
+		         in List.fold_left max 0 sList + List.length sList;;
 
-
+(* Calcule la taille de la pille nécessaire pour les instructions *)
 let rec stack_depth_c = function
-    Skip -> 0
-  | Assign(_,_,expr) -> stack_depth_e expr
-  | Seq(stmt1,stmt2) -> max (stack_depth_c stmt1) (stack_depth_c stmt2)
-  | Cond (e,stmt1,stmt2) ->
-     (* On va empiler 0 pour faire le test apres l'evaluation de e, on a donc une
-        profondeur minimum de 2*)
-     List.fold_left max 2 [stack_depth_e e; stack_depth_c stmt1; stack_depth_c stmt2]
-  | While(e,stmt) ->
-     (*Ici aussi on a besoin d'un minimum de 2 pour faire le test*)
-     max 2 (max (stack_depth_e e) (stack_depth_c stmt))
-  | CallC(_,e_list) ->
-     (*Comme pour l'appel dans une expression, la profondeur depend de l'ordre des parametres*)
-     let d_list = List.map stack_depth_e e_list in
-     List.fold_left max 0 d_list + List.length d_list
-  | Return e -> stack_depth_e e
-;;
+(Skip) -> 0
+|(Assign(_,_,exp)) -> stack_depth_e exp
+|(Seq(stmt1,stmt2)) -> max (stack_depth_c stmt1) (stack_depth_c stmt2)
+|Cond(exp,stmt1,stmt2) -> List.fold_left max 2 [stack_depth_e exp; stack_depth_c stmt1; stack_depth_c stmt2]
+|(While(exp,stmt)) -> max 2 (max (stack_depth_e exp) (stack_depth_c stmt))
+|(CallC(_,eList)) -> let sList = List.map stack_depth_e eList 
+		     in List.fold_left max 0 sList + (List.length sList)
+|(Return exp) -> stack_depth_e exp;;
 
 (* ************************************************************ *)
 (* ****  Definite Assignment                               **** *)
@@ -73,54 +60,52 @@ module StringSet =
 	    let compare = Pervasives.compare 
      end)
 
-let rec defassign_e a = function
-    Const(_,_) -> true
-  | VarE(_,Var(_,name)) -> StringSet.mem name a
-  | BinOp(_,_,e1,e2) -> defassign_e a e1 && defassign_e a e2
-  | IfThenElse(_,e1,e2,e3) -> defassign_e a e1 && defassign_e a e2 && defassign_e a e3
-  | CallE(_,_,e_list) ->
-     List.for_all (defassign_e a) e_list
-;;
+(* Permet de faire la vérification defassign_e sur une liste d'expressions *)
+let rec defassignTable = fun f eList -> match eList with
+([]) -> true
+| (t::r) -> if f t = true 
+	    then defassignTable f r
+	    else false;; 
 
-exception Def_assign_exception;;
-(* Attention, on force les variables globales a etre initialisees dans chaque fonction ou elles
-sont utilisees 
-Que faire avec les parametres de la fonction ?*)
-let rec defassign_c a = function
-  Skip -> a
-  | Assign (_,Var(_,name),e) ->
-     if defassign_e a e then StringSet.add name a else raise Def_assign_exception
-  | Seq(stmt1,stmt2) ->
-     let a = defassign_c a stmt1 in
-     defassign_c a stmt2
-  | Cond(e,stmt1,stmt2) ->
-     if defassign_e a e then
-       let s1 = defassign_c a stmt1 in
-       let s2 = defassign_c a stmt2 in
-       StringSet.inter s1 s2
-     else raise Def_assign_exception
-  | While(e,stmt) ->
-     if defassign_e a e then
-       let _ = defassign_c a stmt in a
-     else raise Def_assign_exception
-  | CallC (_,exp_list)->
-     let exp_def = List.map (defassign_e a) exp_list in
-     if List.exists not exp_def then raise Def_assign_exception
-     else a
-  | Return e -> if defassign_e a e then a else raise Def_assign_exception;;
+(* Verifie que l'expression a bien une valeur finale *)
+let rec defassign_e = fun vs exp -> match exp with
+(Const(_, _)) -> true
+|(VarE(_,Var(_, n))) -> StringSet.mem n vs
+|(BinOp(_, _, exp1, exp2)) -> defassign_e vs exp1 && defassign_e vs exp2
+|(IfThenElse(_, exp1, exp2, exp3)) -> defassign_e vs exp1 && defassign_e vs exp2 && defassign_e vs exp3
+|(CallE(_, _, eList)) -> defassignTable (defassign_e vs) eList;;
 
-(*Ici on considere que les parametres sont definis *)
-let defassign_fundef (Fundefn(Fundecl(_,_,params_list),_,stmt)) =
-    let params_names = List.map name_of_vardecl params_list in
-    let set = List.fold_right (StringSet.add) params_names  StringSet.empty in
-    let _ = defassign_c set stmt in
-    ()
-;;
-
-let analyse_prog (Prog(gvds,fdfs)) =
-  List.iter (defassign_fundef) fdfs;
-  (*stmt_returns*)
-  let fun_returns = List.map (fundef_returns) fdfs in
-  if List.exists (fun b -> not b) fun_returns then failwith("Une branche de fonction ne contient pas de return")
-else Prog(gvds,fdfs);;
-
+(* Verifie que l'instruction a bien une valeur finale et renvoie les variables ayant une valeur prédefinie *)
+let rec defassign_c = fun allvs stmt -> match stmt with
+(Skip) -> allvs
+|(Assign (_, Var(_,n), exp)) -> if (defassign_e allvs exp) 
+			           then StringSet.add n allvs
+			           else raise (AnalyseError(
+					       AssignException("Erreur d'assignation : 
+                                                                l'expression est indefinie !")))
+|(Seq(stmt1, stmt2)) -> let allvs = defassign_c allvs stmt1 
+		        in defassign_c allvs stmt2
+|(Cond(exp, stmt1, stmt2)) -> if (defassign_e allvs exp) 
+			      then let s1 = defassign_c allvs stmt1 
+			           in let s2 = defassign_c allvs stmt2 
+			  	      in StringSet.inter s1 s2
+     			      else raise (AnalyseError(
+				          AssignException("Erreur d'assignation : 
+							   l'expression est indefinie !")))
+|(While(exp, stmt)) -> if (defassign_e allvs exp) 
+		       then let allvs = defassign_c allvs stmt
+			    in allvs 
+     		       else raise (AnalyseError(
+				   AssignException("Erreur d'assignation : 
+						    l'expression est indefinie !")))
+|(CallC (_, eList)) -> let dList = List.map (defassign_e allvs) eList 
+			  in if List.exists not dList
+			     then raise (AnalyseError(
+					 AssignException("Erreur d'assignation : 
+							  l'expression est indefinie !")))
+     			     else allvs
+|(Return exp) -> if (defassign_e allvs exp) 
+	         then allvs
+	         else raise (AnalyseError(
+			      AssignException("Erreur d'assignation : 
+						          l'expression est indefinie !")));;

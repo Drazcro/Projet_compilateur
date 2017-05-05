@@ -78,7 +78,7 @@ Si on cherche à evaluer une expression contenant des branchements comme exp1 :
 On obtient bien l'exception Exception: Gen.NotSuported.
 
 Enfin si on essaye de générer le code avec le mauvais tableau de variable :
-SI ce dernier vaut ["p"] avec exp12 on obtient :
+Si ce dernier vaut ["p"] avec exp12 on obtient :
  
 Exception: Gen.NotFound.
 
@@ -91,6 +91,65 @@ let env1 = {localvar = [("x", IntT ); ("y", IntT )]; globalvar = [];
 returntp = VoidT; funbind = [Fundecl(IntT , "f", [Vardecl(IntT , "n"); Vardecl(BoolT , "b")])]};;
 
 On obtient bien ["iload 0"; "iload 1"; "sipush 2"; "iadd"; "isub"]
+
+FIN PARTIE TYPAGE 
+
+--Exercice 6--
+Ici la principale difficulté étaient de bien cibler le but de chaque instructions afin de bien réaliser la fonction. Une fois ce cap passé la fonction à pu être réalisé facilement.
+
+--Exercice 7--
+Ici, pour pour l'évaluation d'une définition de fonction j'ai choisi encore une fois de déléguer plusieurs actions plus basiques à des fonctions auxilliaires. De ce fait, l'ajout des différentes données dans l'environnement et géré extérieurement et la fonction principale devient plus claire. 
+
+--Exercice 8--
+Cette fonction ne m'a pas posé particulièrement de problèmes et à pu être réalisée assez rapidement.
+
+FIN PARTIE GENERATION BYTECODE
+
+--Exercice 9--
+La principale difficulté de cette partie a été e travail préalable à fournir en amont de la complétion de la fonction. En effet, il fallait tout d'abbord bien comprendre comment gérer les étiquettes et voir comment les implémenter dans la fonction. Ensuite, il fallait bien distinguer les différents cas à branchements pour adapter l'apparition des étiquettes dans la génération dupseudo bytecode. De plus, il fallait bien comprendre comment fonctionnaient les appels de fonctions. J'ai eu plusieurs problèmes pour intégrer les labels dans la fonction. J'ai tout d'abbord choisi d'implémenter la première méthode proposé dans le sujet du projet. Cependant je restait bloqué au niveau des appels de fonctions. J'ai à ce moment appris l'existence des pointeurs explicites de caml permettant de stocker la dernière valeur utilisable pour la génération de la prochaine étiquette. Une fois son fonctionnement compris j'ai donc pu réaliser une petite fonction permettant d'incrémenteur ce pointeur compteur et de renvoyer cette valeur son forme valide. Ceci fait, la génération de labels a étée rendue très facile.
+
+--Exercice 10--
+Cette fonction n'a pas posé de problèmes particuliers. J'ai aussi utilisé le pointeur explicite pour les labels.
+
+--Exercice 11--
+Ici, la difficulté était de savoir quoi renvoyer. Une fois avoir consulté le fichier instrs, j'ai pu réaliser la fonction.
+
+PARTIE ANALYSE
+
+--Exercice 12--
+Cette fonction n'a pas posé de problèmes particuliers.
+
+--Exercice 13--
+La difficulté ici était de bien comprendre comment compter les éléments pour que la taille de la pile d'instructions soit plus ou moins optimale.
+
+--Exercice 14--
+Pas de problèmes particulier.
+
+POINTS FORTS DU COMPILATEUR
+
+Je ne pense pas que le compilateur ai de véritables points forts si ce n'est de fonctionner. 
+
+POINTS FAIBLES DU COMPILATEUR
+
+Les exceptions ne sont pas encore assez précises pour clairement identifier le problème. 
+
+TESTS
+
+Pour les tests j'ai choisi de tout simplement inclure dans le test différentes fonctions basiques servant à tester si les instructions fonctionnent de l'assignation de variables aux instructions à branchement et enfin aux appels de fonctions. 
+
+En resultat du Wrapper on a : 
+
+Addition de deux entiers 5 et 10 : 
+resultat de la fonction addition: 15
+Addition de deux entiers 5 et -10 : 
+Resultat de la fonction addition: -5
+Est-ce que 2 = 3 ?
+C'est faux.
+Resultat de la fonction zero sur 50: 0
+Resultat de la fonction zero sur -50: 0
+Resultat de la fonction increment de 2: 3
+Resultat de la fonction isNatural de 2: 
+il est bien naturel.
 
 
 
